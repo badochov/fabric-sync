@@ -1,0 +1,32 @@
+{
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sonyzach/usfm-validator.git"
+  },
+  "name": "fabric-sync",
+  "version": "1.0.0",
+  "description": "Sync for fabricjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "webpack",
+    "watch": "webpack --watch"
+  },
+  "author": "badochov",
+  "license": "ISC",
+  "dependencies": {
+    "@types/fabric": "^3.0.1",
+    "@types/peerjs": "0.0.30",
+    "bootstrap": "^4.3.1",
+    "fabric": "^3.4.0",
+    "jquery": "^3.4.1",
+    "popper.js": "^1.15.0",
+    "ts-loader": "^6.0.4",
+    "typescript": "^3.6.2",
+    "webpack": "^4.39.3",
+    "webpack-cli": "^3.3.7"
+  },
+  "devDependencies": {
+    "peerjs": "^1.0.3"
+  }
+}

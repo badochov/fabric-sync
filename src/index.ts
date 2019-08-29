@@ -1,0 +1,2 @@
+import fabricjs from 'fabric';
+
