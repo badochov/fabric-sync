@@ -1,7 +1,7 @@
 const path = require('path');
 
 module.exports = {
-	entry: { '/dist/sync': './src/index.ts', 'demo/js/main': './src/demo/index.ts' },
+	entry: { '/dist/sync': './src/index.ts', 'demo/js/main': './demo/src/index.ts' },
 	devtool: 'inline-source-map',
 	output: {
 		path: path.resolve(__dirname, ''),
