@@ -9,7 +9,24 @@ export interface TransferData {
 }
 
 export interface FabricSyncData {
-	canvasJSON?: string;
+	canvasJSON?: any;
 	init?: boolean;
-	obj?: any;
+	obj?: { data: any; type: string };
+}
+
+export interface CObject {
+	id?: number;
+	extra?: any;
+}
+
+export interface UpdateData {
+	id: number;
+	top?: number;
+	left?: number;
+	translateX?: number;
+	translateY?: number;
+	zoomX?: number;
+	zoomY?: number;
+	scaleX?: number;
+	scaleY?: number;
 }
