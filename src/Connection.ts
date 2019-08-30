@@ -146,8 +146,12 @@ export class Connection {
 	 * Getters
 	 */
 
-	get channel() {
+	get channel(): DataChannel {
 		return this._channel;
+	}
+
+	get master(): boolean {
+		return this._master;
 	}
 
 	get onmessage(): onmessage {
@@ -160,5 +164,8 @@ export class Connection {
 
 	set onmessage(fn: onmessage) {
 		this._onmessage = fn;
+	}
+	set master(value: boolean) {
+		this._master = value;
 	}
 }
