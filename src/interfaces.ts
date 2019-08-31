@@ -1,3 +1,5 @@
+import { CanvasObject } from './types';
+
 export interface DataChannel {
 	onmessage: ((...args: any) => any) | null;
 	send: (...args: any) => void;
@@ -12,11 +14,15 @@ export interface FabricSyncData {
 	canvasJSON?: any;
 	init?: boolean;
 	obj?: { data: any; type: string };
+	modified?: { ids: number[] };
 }
 
 export interface CObject {
 	id?: number;
 	extra?: any;
+	_objects?: CanvasObject[];
+	_translateX?: number;
+	_translateY?: number;
 }
 
 export interface UpdateData {

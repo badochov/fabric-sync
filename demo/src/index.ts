@@ -1,5 +1,4 @@
 import { fabric } from 'fabric';
-import Peer from 'peerjs';
 import FabricSync from '../../src/index';
 
 // const canvas2 = new fabric.Canvas('fabric-2');

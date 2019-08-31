@@ -3,6 +3,7 @@ import { fabric } from 'fabric';
 
 import { DataChannel, TransferData, FabricSyncData, UpdateData } from './interfaces';
 import { onmessage } from './types';
+import { CanvasObject } from '.';
 
 export class Connection {
 	private idsToSupress: Array<number> = [];
@@ -80,7 +81,7 @@ export class Connection {
 		return true;
 	}
 
-	private sendFabricData(data: FabricSyncData) {
+	public sendFabricData(data: FabricSyncData) {
 		this._channel.send(JSON.stringify({ fabricSync: data }));
 	}
 	private parseFabricData(data: FabricSyncData): void {
@@ -109,7 +110,7 @@ export class Connection {
 					instances.push(instance);
 				}
 				this._fabric.remove(...instances);
-			} else if (dataObj.type === 'new') {
+			} else if (dataObj.type === 'create') {
 				fabric.util.enlivenObjects(
 					dataObj.data,
 					(objects: any) => {
@@ -121,14 +122,22 @@ export class Connection {
 					'fabric'
 				);
 			} else if (dataObj.type === 'update') {
+				const instances: CanvasObject[] = [];
+
 				dataObj.data.forEach((obj: any) => {
 					const instance = this._fabric.getObjectById(obj.id);
+
+					instances.push(instance);
+
 					instance.set(obj);
 
 					instance.calcCoords();
 				});
 			}
 			this._fabric.refresh();
+		}
+		if (data.modified) {
+			this._fabric.trigger('object:modified', data.modified);
 		}
 	}
 

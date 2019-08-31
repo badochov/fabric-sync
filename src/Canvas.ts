@@ -6,10 +6,12 @@ import { Connection } from './Connection';
 import { DataChannel } from './interfaces';
 import { generateId } from './helpers';
 
-import { onmessage, CanvasObject } from './types';
+import { onmessage, CanvasObject, CanvasEvent } from './types';
+import { UndoRedo } from './UndoRedo';
 
 export class Canvas extends fabric.Canvas {
 	private _connection: Connection;
+	private _undoRedo: UndoRedo;
 
 	constructor(
 		id: string | HTMLCanvasElement,
@@ -20,6 +22,8 @@ export class Canvas extends fabric.Canvas {
 		super(id);
 
 		this._connection = new Connection(this, channel, master, onmessage);
+
+		this._undoRedo = new UndoRedo(this, this._connection);
 
 		this.addListeners();
 	}
@@ -78,7 +82,9 @@ export class Canvas extends fabric.Canvas {
 	// object:skewed
 	private addListeners(): void {
 		this.on({
-			'object:added': (e: any) => {
+			'object:added': (e: CanvasEvent): void => {
+				if (e.target === undefined) return;
+
 				const target = e.target;
 
 				const targets = target._objects ? target._objects : [ target ];
@@ -89,14 +95,21 @@ export class Canvas extends fabric.Canvas {
 
 				this.connection.create(targets);
 			},
-			'object:removed': (e: any) => {
+			'object:removed': (e: CanvasEvent): void => {
+				if (e.target === undefined) return;
+
 				const target = e.target;
 
-				const ids = target._objects ? target._objects.map((obj: CanvasObject) => obj.id) : [ target.id ];
+				const ids: number[] =
+					target._objects !== undefined
+						? <number[]>target._objects.map((obj: CanvasObject) => obj.id)
+						: [ <number>target.id ];
 
 				this.connection.remove(ids);
 			},
-			'object:moving': (e: any) => {
+			'object:moving': (e: CanvasEvent): void => {
+				if (e.target === undefined) return;
+
 				const target = e.target;
 
 				const targets = target._objects ? target._objects.map(this.transformObj) : [ target ];
@@ -111,7 +124,9 @@ export class Canvas extends fabric.Canvas {
 					})
 				);
 			},
-			'object:scaling': (e: any) => {
+			'object:scaling': (e: CanvasEvent): void => {
+				if (e.target === undefined) return;
+
 				const target = e.target;
 
 				const targets = target._objects ? target._objects.map(this.transformObj) : [ target ];
@@ -132,7 +147,9 @@ export class Canvas extends fabric.Canvas {
 					})
 				);
 			},
-			'object:skewing': (e: any) => {
+			'object:skewing': (e: CanvasEvent): void => {
+				if (e.target === undefined) return;
+
 				const target = e.target;
 
 				const targets = target._objects ? target._objects : [ target ];
@@ -153,7 +170,9 @@ export class Canvas extends fabric.Canvas {
 					})
 				);
 			},
-			'object:rotating': (e: any) => {
+			'object:rotating': (e: CanvasEvent): void => {
+				if (e.target === undefined) return;
+
 				const target = e.target;
 
 				const targets = target._objects ? target._objects.map(this.transformObj) : [ target ];
@@ -180,6 +199,9 @@ export class Canvas extends fabric.Canvas {
 
 	get connection(): Connection {
 		return this._connection;
+	}
+	get undoRedo(): UndoRedo {
+		return this._undoRedo;
 	}
 
 	/**
