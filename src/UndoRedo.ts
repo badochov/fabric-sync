@@ -4,6 +4,7 @@ import $ from 'jquery';
 import { change, CanvasEvent, CanvasObject } from './types';
 import { Connection } from './Connection';
 import { Canvas } from './Canvas';
+import { UpdateData } from './interfaces';
 
 export class UndoRedo {
 	private _changeStack: change[] = [];
@@ -12,7 +13,7 @@ export class UndoRedo {
 
 	constructor(private _fabric: Canvas, private _connection: Connection) {
 		this.addListeners();
-		this.bindKeys();
+		// this.bindKeys();
 	}
 
 	/**
@@ -22,72 +23,107 @@ export class UndoRedo {
 	/**
       * undo
       */
-	public undo(): boolean {
+	public undo(send: boolean = true): boolean {
 		if (this._it < 0 || this._changeStack.length === 0) return false;
 
 		let success: boolean = false;
 
-		const change = this.changeStack[this._it];
+		const change = this._changeStack[this._it];
 
 		this._it--;
 
 		switch (change.type) {
 			case 'update':
-				success = this.update(change.objs);
+				success = this.update(change.objs, change.prev);
+
 				break;
 			case 'create':
-				success = this.create(change.objs);
+				success = this.remove(change.objs);
+
 				break;
 			case 'remove':
-				success = this.remove(change.objs);
+				success = this.create(change.objs);
 				break;
 
 			default:
 				break;
+		}
+
+		if (success && send) {
+			this._connection.sendFabricData({ undo: true });
 		}
 
 		return success;
 	}
 
-	public redo(): boolean {
-		if (this._it === this._changeStack.length) return false;
+	public redo(send: boolean = true): boolean {
+		if (this._it === this._changeStack.length - 1) return false;
 
 		let success: boolean = false;
 
-		const change = this.changeStack[this._it];
-
 		this._it++;
+		const change = this._changeStack[this._it];
 
 		switch (change.type) {
 			case 'update':
-				success = this.update(change.objs);
+				success = this.update(change.objs, change.prev, true);
+
 				break;
 			case 'create':
-				success = this.remove(change.objs);
+				success = this.create(change.objs);
+
 				break;
 			case 'remove':
-				success = this.create(change.objs);
+				success = this.remove(change.objs);
 				break;
 
 			default:
 				break;
 		}
+		if (success && send) {
+			this._connection.sendFabricData({ undo: false });
+		}
 
 		return success;
+	}
 
-		return true;
+	/**
+	 * clearStack
+ 	*/
+	public clearStack(): void {
+		this._changeStack = [];
+		this._it = -1;
 	}
 
 	/**
 	 * update
 	 */
-	private update(objs: CanvasObject[]): boolean {
-		for (const obj of objs) {
-			if (obj.id === undefined) continue;
-			const instance = this._fabric.getObjectById(obj.id);
+	private update(objs: CanvasObject[], prev: fabric.Object | undefined, redo: boolean = false): boolean {
+		fabric.util.enlivenObjects(
+			objs,
+			(objects: CanvasObject[]) => {
+				objects.forEach((obj: CanvasObject) => {
+					if (obj.id === undefined || obj === null) return;
 
-			instance.set(obj);
-		}
+					if (!redo) {
+						if (prev !== undefined) {
+							obj.set(prev);
+						}
+						obj = this._fabric.transformObj(obj);
+					}
+
+					const instance = this._fabric.getObjectById(obj.id);
+					if (instance !== null) {
+						instance.set(obj.toObject([ 'id', 'extra' ]));
+						instance.calcCoords();
+						this._fabric.refresh();
+					}
+				});
+			},
+			'fabric'
+		);
+
+		this._fabric.refresh();
 
 		return true;
 	}
@@ -97,10 +133,15 @@ export class UndoRedo {
 		for (const obj of objs) {
 			if (obj.id === undefined) continue;
 
-			this._idsToSupress.push(obj.id);
 			const instance = this._fabric.getObjectById(obj.id);
+			if (instance !== null) {
+				//@ts-ignore
+				instance.set('ignore', true);
+				instances.push(instance);
 
-			instances.push(instance);
+				this._idsToSupress.push(obj.id);
+				console.warn(this._idsToSupress);
+			}
 		}
 		this._fabric.remove(...instances);
 
@@ -110,15 +151,21 @@ export class UndoRedo {
 		fabric.util.enlivenObjects(
 			objs,
 			(objects: CanvasObject[]) => {
+				console.log(objects.map((o) => o.toObject([ 'id', 'extra' ])));
 				objects.forEach((obj: CanvasObject) => {
 					if (obj.id === undefined) return;
-
-					this._idsToSupress.push(obj.id);
-					this._fabric.add(obj);
+					if (this._fabric.getObjectById(obj.id) === null) {
+						this._idsToSupress.push(obj.id);
+						// @ts-ignore
+						obj.set('ignore', true);
+						this._fabric.add(obj);
+					}
 				});
 			},
 			'fabric'
 		);
+
+		this._fabric.refresh();
 
 		return true;
 	}
@@ -131,10 +178,19 @@ export class UndoRedo {
 		const filtered = [];
 
 		for (const obj of objs) {
-			const index = this._idsToSupress.indexOf(<number>obj.id);
+			console.log(obj.toObject([ 'id', 'extra' ]));
+			if (obj.id === undefined) {
+				filtered.push(obj);
+				continue;
+			}
+			const index = this._idsToSupress.indexOf(obj.id);
 			if (index !== -1) {
 				this._idsToSupress.splice(index, 1);
-			} else filtered.push(obj);
+			} else {
+				// const connectionIndex = this._connection.idsToSupress.indexOf(obj.id);
+				// if (connectionIndex === -1)
+				filtered.push(obj);
+			}
 		}
 
 		return filtered;
@@ -148,9 +204,24 @@ export class UndoRedo {
 
 			const objs: CanvasObject[] = target._objects ? target._objects : [ target ];
 
-			const filtered = this.filterSupressed(objs);
+			let ret = false;
+			for (const obj of objs) {
+				if (obj.ignore === true) {
+					// @ts-ignore
+					obj.set('ignore', false);
+					ret = true;
+				}
+			}
+			if (ret) return;
 
-			this._changeStack.push({ type: 'create', objs: filtered.map((obj) => obj.toObject([ 'id', 'extra' ])) });
+			const filtered = this.filterSupressed(objs);
+			if (filtered.length !== 0) {
+				this._it = this._changeStack.length;
+				this._changeStack.push({
+					type: 'create',
+					objs: filtered.map((obj) => obj.toObject([ 'id', 'extra' ]))
+				});
+			}
 		});
 		this._fabric.on('object:removed', (e: CanvasEvent) => {
 			if (e.target === undefined) return;
@@ -159,15 +230,36 @@ export class UndoRedo {
 
 			const objs: CanvasObject[] = target._objects ? target._objects : [ target ];
 
+			let ret = false;
+			for (const obj of objs) {
+				if (obj.ignore === true) {
+					// @ts-ignore
+					obj.set('ignore', false);
+					ret = true;
+				}
+			}
+			if (ret) return;
+
 			const filtered = this.filterSupressed(objs);
 
-			this._changeStack.push({ type: 'remove', objs: objs.map((obj) => obj.toObject([ 'id', 'extra' ])) });
+			if (filtered.length !== 0) {
+				this._it = this._changeStack.length;
+				this._changeStack.push({
+					type: 'remove',
+					objs: filtered.map((obj) => obj.toObject([ 'id', 'extra' ]))
+				});
+			}
 		});
 		this._fabric.on('object:modified', (e: CanvasEvent) => {
+			console.warn(e);
+
 			let filtered: CanvasObject[] = [];
+			let prev: fabric.Object | undefined;
 			if (e.ids !== undefined) {
-				const objs = e.ids.map((id) => this._fabric.getObjectById(id));
-				filtered = this.filterSupressed(objs);
+				const objs = e.ids.map((id) => this._fabric.getObjectById(id)).filter((obj) => obj !== null);
+
+				filtered = this.filterSupressed(<CanvasObject[]>objs);
+				prev = e.prev;
 			} else {
 				if (e.target === undefined) return;
 
@@ -177,27 +269,41 @@ export class UndoRedo {
 
 				filtered = this.filterSupressed(objs);
 
-				this._connection.sendFabricData({
-					modified: {
-						ids: filtered.map((c) => <number>c.id)
-					}
+				prev = e.transform !== undefined ? e.transform.original : e.transform;
+
+				// todo calc transform  matrix and then pass options
+				if (filtered.length !== 0) {
+					this._connection.sendFabricData({
+						modified: {
+							ids: filtered.map((c) => <number>c.id),
+							prev: prev
+						}
+					});
+				}
+				// }
+			}
+			if (filtered.length !== 0) {
+				this._it = this._changeStack.length;
+				this._changeStack.push({
+					type: 'update',
+					objs: filtered.map((obj) => obj.toObject([ 'id', 'extra' ])),
+					prev: prev
 				});
 			}
-			this._changeStack.push({ type: 'update', objs: filtered.map((obj) => obj.toObject([ 'id', 'extra' ])) });
 		});
 	}
 
-	private bindKeys(): void {
-		$(document).keydown((e: JQuery.Event) => {
-			if (e.ctrlKey) {
-				if (e.key === 'z') {
-					this.undo();
-				} else if (e.key === 'y') {
-					this.redo();
-				}
-			}
-		});
-	}
+	// private bindKeys(): void {
+	// 	$(document).keydown((e: JQuery.Event) => {
+	// 		if (e.ctrlKey) {
+	// 			if (e.key === 'z') {
+	// 				this.undo();
+	// 			} else if (e.key === 'y') {
+	// 				this.redo();
+	// 			}
+	// 		}
+	// 	});
+	// }
 
 	/**
      * Getter
@@ -218,3 +324,5 @@ export class UndoRedo {
 		return this._connection;
 	}
 }
+
+// todo make it work properly

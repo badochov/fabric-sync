@@ -11,7 +11,6 @@ import { UndoRedo } from './UndoRedo';
 
 export class Canvas extends fabric.Canvas {
 	private _connection: Connection;
-	private _undoRedo: UndoRedo;
 
 	constructor(
 		id: string | HTMLCanvasElement,
@@ -22,8 +21,6 @@ export class Canvas extends fabric.Canvas {
 		super(id);
 
 		this._connection = new Connection(this, channel, master, onmessage);
-
-		this._undoRedo = new UndoRedo(this, this._connection);
 
 		this.addListeners();
 	}
@@ -65,8 +62,9 @@ export class Canvas extends fabric.Canvas {
 		this.refresh();
 	}
 
-	public getObjectById(id: number): CanvasObject {
-		return this.getObjects().filter((obj: any) => obj.id === id)[0];
+	public getObjectById(id: number | undefined): CanvasObject | null {
+		const result: CanvasObject | undefined = this.getObjects().filter((obj: any) => obj.id === id)[0];
+		return result ? result : null;
 	}
 
 	/**
@@ -87,25 +85,42 @@ export class Canvas extends fabric.Canvas {
 
 				const target = e.target;
 
-				const targets = target._objects ? target._objects : [ target ];
+				const objs = target._objects ? target._objects : [ target ];
 
-				targets.forEach((obj: any) => {
+				let ret = false;
+				for (const obj of objs) {
+					if (obj.ignore === true) {
+						// @ts-ignore
+						ret = true;
+					}
+				}
+				if (ret) return;
+
+				objs.forEach((obj: any) => {
 					if (obj.id === undefined) obj.set('id', generateId());
 				});
 
-				this.connection.create(targets);
+				this._connection.create(objs);
 			},
 			'object:removed': (e: CanvasEvent): void => {
 				if (e.target === undefined) return;
 
 				const target = e.target;
 
-				const ids: number[] =
-					target._objects !== undefined
-						? <number[]>target._objects.map((obj: CanvasObject) => obj.id)
-						: [ <number>target.id ];
+				const objs = target._objects !== undefined ? target._objects : [ target ];
 
-				this.connection.remove(ids);
+				let ret = false;
+				for (const obj of objs) {
+					if (obj.ignore === true) {
+						// @ts-ignore
+						ret = true;
+					}
+				}
+				if (ret) return;
+
+				const ids: number[] = objs.map((obj) => <number>obj.id);
+
+				this._connection.remove(ids);
 			},
 			'object:moving': (e: CanvasEvent): void => {
 				if (e.target === undefined) return;
@@ -201,7 +216,7 @@ export class Canvas extends fabric.Canvas {
 		return this._connection;
 	}
 	get undoRedo(): UndoRedo {
-		return this._undoRedo;
+		return this._connection.undoRedo;
 	}
 
 	/**

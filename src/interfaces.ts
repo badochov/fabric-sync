@@ -14,7 +14,8 @@ export interface FabricSyncData {
 	canvasJSON?: any;
 	init?: boolean;
 	obj?: { data: any; type: string };
-	modified?: { ids: number[] };
+	modified?: { ids: number[]; prev: fabric.Object | undefined };
+	undo?: boolean;
 }
 
 export interface CObject {
@@ -23,6 +24,7 @@ export interface CObject {
 	_objects?: CanvasObject[];
 	_translateX?: number;
 	_translateY?: number;
+	ignore?: boolean;
 }
 
 export interface UpdateData {

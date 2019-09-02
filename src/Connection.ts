@@ -4,9 +4,11 @@ import { fabric } from 'fabric';
 import { DataChannel, TransferData, FabricSyncData, UpdateData } from './interfaces';
 import { onmessage } from './types';
 import { CanvasObject } from '.';
+import { UndoRedo } from './UndoRedo';
 
 export class Connection {
-	private idsToSupress: Array<number> = [];
+	private _idsToSupress: Array<number> = [];
+	private _undoRedo: UndoRedo;
 
 	constructor(
 		private _fabric: Canvas,
@@ -15,6 +17,8 @@ export class Connection {
 		private _onmessage: onmessage = (data: any): void => {}
 	) {
 		this._channel.onmessage = this.receive.bind(this);
+
+		this._undoRedo = new UndoRedo(this._fabric, this);
 
 		if (!_master) {
 			this.sendFabricData({
@@ -28,7 +32,7 @@ export class Connection {
 	}
 
 	public remove(ids: Array<number>): boolean {
-		const data = this.filterSupressed(ids);
+		const data = this.filterSupressedIds(ids);
 		if (data === []) return false;
 
 		this.sendFabricData({ obj: { data: data, type: 'remove' } });
@@ -36,14 +40,28 @@ export class Connection {
 		return true;
 	}
 
-	private filterSupressed(objs: any[]): any[] {
+	private filterSupressed(objs: CanvasObject[]): CanvasObject[] {
 		const filtered = [];
 
 		for (const obj of objs) {
-			const index = this.idsToSupress.indexOf(<number>obj.id);
+			if (obj.id === undefined) continue;
+			const index = this._idsToSupress.indexOf(obj.id);
 			if (index !== -1) {
-				this.idsToSupress.splice(index, 1);
+				this._idsToSupress.splice(index, 1);
 			} else filtered.push(obj);
+		}
+
+		return filtered;
+	}
+	private filterSupressedIds(ids: Array<number | undefined>): Array<number> {
+		const filtered = [];
+
+		for (const id of ids) {
+			if (id === undefined) continue;
+			const index = this._idsToSupress.indexOf(id);
+			if (index !== -1) {
+				this._idsToSupress.splice(index, 1);
+			} else filtered.push(id);
 		}
 
 		return filtered;
@@ -52,7 +70,7 @@ export class Connection {
 	/**
 	 * created
 	 */
-	public create(objs: any[]) {
+	public create(objs: CanvasObject[]) {
 		const data = [];
 		for (const obj of this.filterSupressed(objs)) {
 			if (obj !== null) {
@@ -60,6 +78,8 @@ export class Connection {
 				data.push(temp);
 			}
 		}
+
+		console.log(data);
 
 		if (data === []) return false;
 
@@ -72,7 +92,8 @@ export class Connection {
 	 * updated
 	 */
 	public update(objs: UpdateData[]) {
-		const data = this.filterSupressed(objs);
+		const filteredIds = this.filterSupressedIds(objs.map((obj) => obj.id));
+		const data = objs.filter((obj) => filteredIds.indexOf(obj.id) !== -1);
 
 		if (data === []) return false;
 
@@ -85,6 +106,7 @@ export class Connection {
 		this._channel.send(JSON.stringify({ fabricSync: data }));
 	}
 	private parseFabricData(data: FabricSyncData): void {
+		console.log(data);
 		if (data.init === true) {
 			this.sendFabricData({
 				canvasJSON: this._fabric.toObject([ 'id', 'extra' ])
@@ -92,8 +114,10 @@ export class Connection {
 		}
 		if (data.canvasJSON) {
 			for (const obj of data.canvasJSON.objects) {
-				this.idsToSupress.push(obj.id);
+				this._idsToSupress.push(obj.id);
 			}
+			this._undoRedo.clearStack();
+			this._idsToSupress = [];
 			this._fabric.loadFromJSON(data.canvasJSON, () => {
 				this._fabric.refresh();
 			});
@@ -104,10 +128,9 @@ export class Connection {
 			if (dataObj.type === 'remove') {
 				const instances = [];
 				for (const id of dataObj.data) {
-					this.idsToSupress.push(id);
+					this._idsToSupress.push(id);
 					const instance = this._fabric.getObjectById(id);
-
-					instances.push(instance);
+					if (instance !== null) instances.push(instance);
 				}
 				this._fabric.remove(...instances);
 			} else if (dataObj.type === 'create') {
@@ -115,8 +138,10 @@ export class Connection {
 					dataObj.data,
 					(objects: any) => {
 						objects.forEach((obj: any) => {
-							this.idsToSupress.push(obj.id);
-							this._fabric.add(obj);
+							if (this._fabric.getObjectById(obj.id) === null) {
+								this._idsToSupress.push(obj.id);
+								this._fabric.add(obj);
+							}
 						});
 					},
 					'fabric'
@@ -126,6 +151,7 @@ export class Connection {
 
 				dataObj.data.forEach((obj: any) => {
 					const instance = this._fabric.getObjectById(obj.id);
+					if (instance === null) return;
 
 					instances.push(instance);
 
@@ -138,6 +164,11 @@ export class Connection {
 		}
 		if (data.modified) {
 			this._fabric.trigger('object:modified', data.modified);
+		}
+		if (data.undo !== undefined) {
+			if (data.undo === true) {
+				this._undoRedo.undo(false);
+			} else this._undoRedo.redo(false);
 		}
 	}
 
@@ -165,6 +196,14 @@ export class Connection {
 
 	get onmessage(): onmessage {
 		return this._onmessage;
+	}
+
+	get idsToSupress(): number[] {
+		return this._idsToSupress;
+	}
+
+	get undoRedo(): UndoRedo {
+		return this._undoRedo;
 	}
 
 	/**
