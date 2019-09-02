@@ -62,7 +62,7 @@ export class Canvas extends fabric.Canvas {
 		this.refresh();
 	}
 
-	public getObjectById(id: number | undefined): CanvasObject | null {
+	public getObjectById(id: string | undefined): CanvasObject | null {
 		const result: CanvasObject | undefined = this.getObjects().filter((obj: any) => obj.id === id)[0];
 		return result ? result : null;
 	}
@@ -83,6 +83,8 @@ export class Canvas extends fabric.Canvas {
 			'object:added': (e: CanvasEvent): void => {
 				if (e.target === undefined) return;
 
+				console.error(e);
+
 				const target = e.target;
 
 				const objs = target._objects ? target._objects : [ target ];
@@ -96,21 +98,23 @@ export class Canvas extends fabric.Canvas {
 				}
 				if (ret) return;
 
-				objs.forEach((obj: any) => {
+				objs.forEach((obj: CanvasObject) => {
 					if (obj.id === undefined) obj.set('id', generateId());
 				});
 
 				this._connection.create(objs);
 			},
 			'object:removed': (e: CanvasEvent): void => {
+				console.log(e);
 				if (e.target === undefined) return;
 
 				const target = e.target;
 
 				const objs = target._objects !== undefined ? target._objects : [ target ];
-
+				console.log(objs, this.getObjects().map((o: any) => o.ignore));
 				let ret = false;
 				for (const obj of objs) {
+					console.log(obj.ignore);
 					if (obj.ignore === true) {
 						// @ts-ignore
 						ret = true;
@@ -118,7 +122,9 @@ export class Canvas extends fabric.Canvas {
 				}
 				if (ret) return;
 
-				const ids: number[] = objs.map((obj) => <number>obj.id);
+				console.error('CANVAS', ret, objs);
+
+				const ids: string[] = objs.map((obj) => <string>obj.id);
 
 				this._connection.remove(ids);
 			},

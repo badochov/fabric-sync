@@ -8,6 +8,13 @@ import FabricSync from '../../src/index';
  * Connection has been established
  */
 
+declare global {
+	interface Window {
+		sync1?: FabricSync;
+		sync2?: FabricSync;
+	}
+}
+
 function connected() {
 	const sync1 = new FabricSync('fabric-1', channel1, true, (data) => {
 		console.log(data);
@@ -16,6 +23,9 @@ function connected() {
 	const sync2 = new FabricSync('fabric-2', channel2, false, (data) => {
 		console.log(data);
 	});
+
+	window.sync1 = sync1;
+	window.sync2 = sync2;
 
 	console.log(sync1, sync2);
 

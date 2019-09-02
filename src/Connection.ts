@@ -7,7 +7,7 @@ import { CanvasObject } from '.';
 import { UndoRedo } from './UndoRedo';
 
 export class Connection {
-	private _idsToSupress: Array<number> = [];
+	private _idsToSupress: string[] = [];
 	private _undoRedo: UndoRedo;
 
 	constructor(
@@ -31,7 +31,7 @@ export class Connection {
 		this._channel.send(JSON.stringify({ data: data }));
 	}
 
-	public remove(ids: Array<number>): boolean {
+	public remove(ids: string[]): boolean {
 		const data = this.filterSupressedIds(ids);
 		if (data === []) return false;
 
@@ -53,7 +53,7 @@ export class Connection {
 
 		return filtered;
 	}
-	private filterSupressedIds(ids: Array<number | undefined>): Array<number> {
+	private filterSupressedIds(ids: Array<string | undefined>): Array<string> {
 		const filtered = [];
 
 		for (const id of ids) {
@@ -106,7 +106,8 @@ export class Connection {
 		this._channel.send(JSON.stringify({ fabricSync: data }));
 	}
 	private parseFabricData(data: FabricSyncData): void {
-		console.log(data);
+		// @ts-ignore
+		console.log(data, this._fabric.lowerCanvasEl.id);
 		if (data.init === true) {
 			this.sendFabricData({
 				canvasJSON: this._fabric.toObject([ 'id', 'extra' ])
@@ -117,9 +118,16 @@ export class Connection {
 				this._idsToSupress.push(obj.id);
 			}
 			this._undoRedo.clearStack();
-			this._idsToSupress = [];
+			// @ts-ignore
+			console.warn(sync1.undoRedo.changeStack, sync2.undoRedo.changeStack);
+			// this._idsToSupress = [];
 			this._fabric.loadFromJSON(data.canvasJSON, () => {
 				this._fabric.refresh();
+				setTimeout(() => {
+					// @ts-ignore
+
+					console.warn(sync1.undoRedo.changeStack, sync2.undoRedo.changeStack);
+				}, 0);
 			});
 		}
 		if (data.obj) {
@@ -198,7 +206,7 @@ export class Connection {
 		return this._onmessage;
 	}
 
-	get idsToSupress(): number[] {
+	get idsToSupress(): string[] {
 		return this._idsToSupress;
 	}
 

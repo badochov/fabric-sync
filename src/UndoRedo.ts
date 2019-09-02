@@ -9,7 +9,7 @@ import { UpdateData } from './interfaces';
 export class UndoRedo {
 	private _changeStack: change[] = [];
 	private _it: number = -1;
-	private _idsToSupress: number[] = [];
+	private _idsToSupress: string[] = [];
 
 	constructor(private _fabric: Canvas, private _connection: Connection) {
 		this.addListeners();
@@ -136,14 +136,21 @@ export class UndoRedo {
 			const instance = this._fabric.getObjectById(obj.id);
 			if (instance !== null) {
 				//@ts-ignore
-				instance.set('ignore', true);
+				instance.set({ ignore: true });
+
+				console.warn(instance.ignore);
 				instances.push(instance);
 
 				this._idsToSupress.push(obj.id);
 				console.warn(this._idsToSupress);
 			}
 		}
-		this._fabric.remove(...instances);
+		this._fabric.refresh();
+
+		console.log(this._fabric.getObjects().map((o: any) => o.ignore));
+		setTimeout(() => {
+			this._fabric.remove(...instances);
+		}, 0);
 
 		return true;
 	}
@@ -212,16 +219,18 @@ export class UndoRedo {
 					ret = true;
 				}
 			}
-			if (ret) return;
+			setTimeout(() => {
+				const filtered = this.filterSupressed(objs);
+				if (ret) return;
 
-			const filtered = this.filterSupressed(objs);
-			if (filtered.length !== 0) {
-				this._it = this._changeStack.length;
-				this._changeStack.push({
-					type: 'create',
-					objs: filtered.map((obj) => obj.toObject([ 'id', 'extra' ]))
-				});
-			}
+				if (filtered.length !== 0) {
+					this._it = this._changeStack.length;
+					this._changeStack.push({
+						type: 'create',
+						objs: filtered.map((obj) => obj.toObject([ 'id', 'extra' ]))
+					});
+				}
+			}, 0);
 		});
 		this._fabric.on('object:removed', (e: CanvasEvent) => {
 			if (e.target === undefined) return;
@@ -229,6 +238,8 @@ export class UndoRedo {
 			const target: CanvasObject = e.target;
 
 			const objs: CanvasObject[] = target._objects ? target._objects : [ target ];
+
+			console.log(this._fabric.getObjects().map((o: any) => o.ignore));
 
 			let ret = false;
 			for (const obj of objs) {
@@ -238,17 +249,20 @@ export class UndoRedo {
 					ret = true;
 				}
 			}
-			if (ret) return;
+			setTimeout(() => {
+				const filtered = this.filterSupressed(objs);
+				if (ret) return;
 
-			const filtered = this.filterSupressed(objs);
+				console.error('UNDOREDO', ret);
 
-			if (filtered.length !== 0) {
-				this._it = this._changeStack.length;
-				this._changeStack.push({
-					type: 'remove',
-					objs: filtered.map((obj) => obj.toObject([ 'id', 'extra' ]))
-				});
-			}
+				if (filtered.length !== 0) {
+					this._it = this._changeStack.length;
+					this._changeStack.push({
+						type: 'remove',
+						objs: filtered.map((obj) => obj.toObject([ 'id', 'extra' ]))
+					});
+				}
+			}, 0);
 		});
 		this._fabric.on('object:modified', (e: CanvasEvent) => {
 			console.warn(e);
@@ -275,7 +289,7 @@ export class UndoRedo {
 				if (filtered.length !== 0) {
 					this._connection.sendFabricData({
 						modified: {
-							ids: filtered.map((c) => <number>c.id),
+							ids: filtered.map((c) => <string>c.id),
 							prev: prev
 						}
 					});
@@ -325,4 +339,4 @@ export class UndoRedo {
 	}
 }
 
-// todo make it work properly
+// todo make it work properly -> sync2 sometimes has two  instances o change

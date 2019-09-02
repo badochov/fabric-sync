@@ -11,7 +11,7 @@ export type change = {
 
 export type CanvasEvent = fabric.IEvent & {
 	target?: CanvasObject;
-	ids?: number[];
+	ids?: string[];
 	prev?: fabric.Object;
 };
 

@@ -14,12 +14,12 @@ export interface FabricSyncData {
 	canvasJSON?: any;
 	init?: boolean;
 	obj?: { data: any; type: string };
-	modified?: { ids: number[]; prev: fabric.Object | undefined };
+	modified?: { ids: string[]; prev: fabric.Object | undefined };
 	undo?: boolean;
 }
 
 export interface CObject {
-	id?: number;
+	id?: string;
 	extra?: any;
 	_objects?: CanvasObject[];
 	_translateX?: number;
@@ -28,7 +28,7 @@ export interface CObject {
 }
 
 export interface UpdateData {
-	id: number;
+	id: string;
 	top?: number;
 	left?: number;
 	translateX?: number;
