@@ -17,14 +17,18 @@ export class Connection {
 		private _onmessage: onmessage = (data: any): void => {}
 	) {
 		this._channel.onmessage = this.receive.bind(this);
-
 		this._undoRedo = new UndoRedo(this._fabric, this);
 
-		if (!_master) {
+
+
+	}
+	public init():void{
+		if (!this._master) {
 			this.sendFabricData({
 				init: true
 			});
 		}
+		this._undoRedo.init();
 	}
 
 	public send(data: any): void {

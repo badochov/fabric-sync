@@ -1,28 +1,29 @@
-import { fabric } from 'fabric';
-import $ from 'jquery';
+import { fabric } from "fabric";
+import $ from "jquery";
 
-import { change, CanvasEvent, CanvasObject } from './types';
-import { Connection } from './Connection';
-import { Canvas } from './Canvas';
-import { UpdateData } from './interfaces';
+import { change, CanvasEvent, CanvasObject } from "./types";
+import { Connection } from "./Connection";
+import { Canvas } from "./Canvas";
+import { UpdateData } from "./interfaces";
 
 export class UndoRedo {
 	private _changeStack: change[] = [];
 	private _it: number = -1;
 	private _idsToSupress: string[] = [];
 
-	constructor(private _fabric: Canvas, private _connection: Connection) {
+	constructor(private _fabric: Canvas, private _connection: Connection) {}
+
+	/**
+	 * Public
+	 */
+
+	public init(): void {
 		this.addListeners();
-		// this.bindKeys();
 	}
 
 	/**
-     * Public
-     */
-
-	/**
-      * undo
-      */
+	 * undo
+	 */
 	public undo(send: boolean = true): boolean {
 		if (this._it < 0 || this._changeStack.length === 0) return false;
 
@@ -33,15 +34,15 @@ export class UndoRedo {
 		this._it--;
 
 		switch (change.type) {
-			case 'update':
+			case "update":
 				success = this.update(change.objs, change.prev);
 
 				break;
-			case 'create':
+			case "create":
 				success = this.remove(change.objs);
 
 				break;
-			case 'remove':
+			case "remove":
 				success = this.create(change.objs);
 				break;
 
@@ -65,15 +66,15 @@ export class UndoRedo {
 		const change = this._changeStack[this._it];
 
 		switch (change.type) {
-			case 'update':
+			case "update":
 				success = this.update(change.objs, change.prev, true);
 
 				break;
-			case 'create':
+			case "create":
 				success = this.create(change.objs);
 
 				break;
-			case 'remove':
+			case "remove":
 				success = this.remove(change.objs);
 				break;
 
@@ -89,7 +90,7 @@ export class UndoRedo {
 
 	/**
 	 * clearStack
- 	*/
+	 */
 	public clearStack(): void {
 		this._changeStack = [];
 		this._it = -1;
@@ -98,7 +99,11 @@ export class UndoRedo {
 	/**
 	 * update
 	 */
-	private update(objs: CanvasObject[], prev: fabric.Object | undefined, redo: boolean = false): boolean {
+	private update(
+		objs: CanvasObject[],
+		prev: fabric.Object | undefined,
+		redo: boolean = false
+	): boolean {
 		fabric.util.enlivenObjects(
 			objs,
 			(objects: CanvasObject[]) => {
@@ -114,13 +119,13 @@ export class UndoRedo {
 
 					const instance = this._fabric.getObjectById(obj.id);
 					if (instance !== null) {
-						instance.set(obj.toObject([ 'id', 'extra' ]));
+						instance.set(obj.toObject(["id", "extra"]));
 						instance.calcCoords();
 						this._fabric.refresh();
 					}
 				});
 			},
-			'fabric'
+			"fabric"
 		);
 
 		this._fabric.refresh();
@@ -158,18 +163,18 @@ export class UndoRedo {
 		fabric.util.enlivenObjects(
 			objs,
 			(objects: CanvasObject[]) => {
-				console.log(objects.map((o) => o.toObject([ 'id', 'extra' ])));
+				console.log(objects.map(o => o.toObject(["id", "extra"])));
 				objects.forEach((obj: CanvasObject) => {
 					if (obj.id === undefined) return;
 					if (this._fabric.getObjectById(obj.id) === null) {
 						this._idsToSupress.push(obj.id);
 						// @ts-ignore
-						obj.set('ignore', true);
+						obj.set("ignore", true);
 						this._fabric.add(obj);
 					}
 				});
 			},
-			'fabric'
+			"fabric"
 		);
 
 		this._fabric.refresh();
@@ -178,14 +183,14 @@ export class UndoRedo {
 	}
 
 	/**
-     * Private
-     */
+	 * Private
+	 */
 
 	private filterSupressed(objs: CanvasObject[]): CanvasObject[] {
 		const filtered = [];
 
 		for (const obj of objs) {
-			console.log(obj.toObject([ 'id', 'extra' ]));
+			console.log(obj.toObject(["id", "extra"]));
 			if (obj.id === undefined) {
 				filtered.push(obj);
 				continue;
@@ -204,18 +209,20 @@ export class UndoRedo {
 	}
 
 	private addListeners(): void {
-		this._fabric.on('object:added', (e: CanvasEvent) => {
+		this._fabric.on("object:added", (e: CanvasEvent) => {
 			if (e.target === undefined) return;
 
 			const target: CanvasObject = e.target;
 
-			const objs: CanvasObject[] = target._objects ? target._objects : [ target ];
+			const objs: CanvasObject[] = target._objects
+				? target._objects
+				: [target];
 
 			let ret = false;
 			for (const obj of objs) {
 				if (obj.ignore === true) {
 					// @ts-ignore
-					obj.set('ignore', false);
+					obj.set("ignore", false);
 					ret = true;
 				}
 			}
@@ -226,18 +233,22 @@ export class UndoRedo {
 				if (filtered.length !== 0) {
 					this._it = this._changeStack.length;
 					this._changeStack.push({
-						type: 'create',
-						objs: filtered.map((obj) => obj.toObject([ 'id', 'extra' ]))
+						type: "create",
+						objs: filtered.map(obj =>
+							obj.toObject(["id", "extra"])
+						),
 					});
 				}
 			}, 0);
 		});
-		this._fabric.on('object:removed', (e: CanvasEvent) => {
+		this._fabric.on("object:removed", (e: CanvasEvent) => {
 			if (e.target === undefined) return;
 
 			const target: CanvasObject = e.target;
 
-			const objs: CanvasObject[] = target._objects ? target._objects : [ target ];
+			const objs: CanvasObject[] = target._objects
+				? target._objects
+				: [target];
 
 			console.log(this._fabric.getObjects().map((o: any) => o.ignore));
 
@@ -245,7 +256,7 @@ export class UndoRedo {
 			for (const obj of objs) {
 				if (obj.ignore === true) {
 					// @ts-ignore
-					obj.set('ignore', false);
+					obj.set("ignore", false);
 					ret = true;
 				}
 			}
@@ -253,24 +264,28 @@ export class UndoRedo {
 				const filtered = this.filterSupressed(objs);
 				if (ret) return;
 
-				console.error('UNDOREDO', ret);
+				console.error("UNDOREDO", ret);
 
 				if (filtered.length !== 0) {
 					this._it = this._changeStack.length;
 					this._changeStack.push({
-						type: 'remove',
-						objs: filtered.map((obj) => obj.toObject([ 'id', 'extra' ]))
+						type: "remove",
+						objs: filtered.map(obj =>
+							obj.toObject(["id", "extra"])
+						),
 					});
 				}
 			}, 0);
 		});
-		this._fabric.on('object:modified', (e: CanvasEvent) => {
+		this._fabric.on("object:modified", (e: CanvasEvent) => {
 			console.warn(e);
 
 			let filtered: CanvasObject[] = [];
 			let prev: fabric.Object | undefined;
 			if (e.ids !== undefined) {
-				const objs = e.ids.map((id) => this._fabric.getObjectById(id)).filter((obj) => obj !== null);
+				const objs = e.ids
+					.map(id => this._fabric.getObjectById(id))
+					.filter(obj => obj !== null);
 
 				filtered = this.filterSupressed(<CanvasObject[]>objs);
 				prev = e.prev;
@@ -279,19 +294,22 @@ export class UndoRedo {
 
 				const target = e.target;
 
-				const objs = target._objects ? target._objects : [ target ];
+				const objs = target._objects ? target._objects : [target];
 
 				filtered = this.filterSupressed(objs);
 
-				prev = e.transform !== undefined ? e.transform.original : e.transform;
+				prev =
+					e.transform !== undefined
+						? e.transform.original
+						: e.transform;
 
 				// todo calc transform  matrix and then pass options
 				if (filtered.length !== 0) {
 					this._connection.sendFabricData({
 						modified: {
-							ids: filtered.map((c) => <string>c.id),
-							prev: prev
-						}
+							ids: filtered.map(c => <string>c.id),
+							prev: prev,
+						},
 					});
 				}
 				// }
@@ -299,9 +317,9 @@ export class UndoRedo {
 			if (filtered.length !== 0) {
 				this._it = this._changeStack.length;
 				this._changeStack.push({
-					type: 'update',
-					objs: filtered.map((obj) => obj.toObject([ 'id', 'extra' ])),
-					prev: prev
+					type: "update",
+					objs: filtered.map(obj => obj.toObject(["id", "extra"])),
+					prev: prev,
 				});
 			}
 		});
@@ -320,8 +338,8 @@ export class UndoRedo {
 	// }
 
 	/**
-     * Getter
-     */
+	 * Getter
+	 */
 
 	get it(): number {
 		return this._it;

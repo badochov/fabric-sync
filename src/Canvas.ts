@@ -1,13 +1,13 @@
-import { fabric } from 'fabric';
-import _ from 'lodash';
+import { fabric } from "fabric";
+import _ from "lodash";
 
-import { Connection } from './Connection';
+import { Connection } from "./Connection";
 
-import { DataChannel } from './interfaces';
-import { generateId } from './helpers';
+import { DataChannel } from "./interfaces";
+import { generateId } from "./helpers";
 
-import { onmessage, CanvasObject, CanvasEvent } from './types';
-import { UndoRedo } from './UndoRedo';
+import { onmessage, CanvasObject, CanvasEvent } from "./types";
+import { UndoRedo } from "./UndoRedo";
 
 export class Canvas extends fabric.Canvas {
 	private _connection: Connection;
@@ -29,6 +29,10 @@ export class Canvas extends fabric.Canvas {
 	 * Public methods
 	 */
 
+	public init(): void {
+		this._connection.init();
+	}
+
 	public transformObj(obj: fabric.Object): fabric.Object {
 		const temp = _.cloneDeep(obj);
 
@@ -38,12 +42,12 @@ export class Canvas extends fabric.Canvas {
 
 		temp.flipX = false;
 		temp.flipY = false;
-		temp.set('scaleX', options.scaleX);
-		temp.set('scaleY', options.scaleY);
+		temp.set("scaleX", options.scaleX);
+		temp.set("scaleY", options.scaleY);
 		temp.skewX = options.skewX;
 		temp.skewY = options.skewY;
 		temp.angle = options.angle;
-		temp.setPositionByOrigin(center, 'center', 'center');
+		temp.setPositionByOrigin(center, "center", "center");
 
 		return temp;
 	}
@@ -63,7 +67,9 @@ export class Canvas extends fabric.Canvas {
 	}
 
 	public getObjectById(id: string | undefined): CanvasObject | null {
-		const result: CanvasObject | undefined = this.getObjects().filter((obj: any) => obj.id === id)[0];
+		const result: CanvasObject | undefined = this.getObjects().filter(
+			(obj: any) => obj.id === id
+		)[0];
 		return result ? result : null;
 	}
 
@@ -80,14 +86,14 @@ export class Canvas extends fabric.Canvas {
 	// object:skewed
 	private addListeners(): void {
 		this.on({
-			'object:added': (e: CanvasEvent): void => {
+			"object:added": (e: CanvasEvent): void => {
 				if (e.target === undefined) return;
 
 				console.error(e);
 
 				const target = e.target;
 
-				const objs = target._objects ? target._objects : [ target ];
+				const objs = target._objects ? target._objects : [target];
 
 				let ret = false;
 				for (const obj of objs) {
@@ -99,18 +105,19 @@ export class Canvas extends fabric.Canvas {
 				if (ret) return;
 
 				objs.forEach((obj: CanvasObject) => {
-					if (obj.id === undefined) obj.set('id', generateId());
+					if (obj.id === undefined) obj.set("id", generateId());
 				});
 
 				this._connection.create(objs);
 			},
-			'object:removed': (e: CanvasEvent): void => {
+			"object:removed": (e: CanvasEvent): void => {
 				console.log(e);
 				if (e.target === undefined) return;
 
 				const target = e.target;
 
-				const objs = target._objects !== undefined ? target._objects : [ target ];
+				const objs =
+					target._objects !== undefined ? target._objects : [target];
 				console.log(objs, this.getObjects().map((o: any) => o.ignore));
 				let ret = false;
 				for (const obj of objs) {
@@ -122,35 +129,39 @@ export class Canvas extends fabric.Canvas {
 				}
 				if (ret) return;
 
-				console.error('CANVAS', ret, objs);
+				console.error("CANVAS", ret, objs);
 
-				const ids: string[] = objs.map((obj) => <string>obj.id);
+				const ids: string[] = objs.map(obj => <string>obj.id);
 
 				this._connection.remove(ids);
 			},
-			'object:moving': (e: CanvasEvent): void => {
+			"object:moving": (e: CanvasEvent): void => {
 				if (e.target === undefined) return;
 
 				const target = e.target;
 
-				const targets = target._objects ? target._objects.map(this.transformObj) : [ target ];
+				const targets = target._objects
+					? target._objects.map(this.transformObj)
+					: [target];
 
 				this._connection.update(
 					targets.map((obj: any) => {
 						return {
 							id: obj.id,
 							top: obj.top,
-							left: obj.left
+							left: obj.left,
 						};
 					})
 				);
 			},
-			'object:scaling': (e: CanvasEvent): void => {
+			"object:scaling": (e: CanvasEvent): void => {
 				if (e.target === undefined) return;
 
 				const target = e.target;
 
-				const targets = target._objects ? target._objects.map(this.transformObj) : [ target ];
+				const targets = target._objects
+					? target._objects.map(this.transformObj)
+					: [target];
 
 				this._connection.update(
 					targets.map((obj: any) => {
@@ -163,17 +174,17 @@ export class Canvas extends fabric.Canvas {
 							// zoomX: obj.zoomX,
 							// zoomY: obj.zoomY,
 							scaleX: obj.scaleX,
-							scaleY: obj.scaleY
+							scaleY: obj.scaleY,
 						};
 					})
 				);
 			},
-			'object:skewing': (e: CanvasEvent): void => {
+			"object:skewing": (e: CanvasEvent): void => {
 				if (e.target === undefined) return;
 
 				const target = e.target;
 
-				const targets = target._objects ? target._objects : [ target ];
+				const targets = target._objects ? target._objects : [target];
 
 				this._connection.update(
 					targets.map((obj: any) => {
@@ -186,17 +197,19 @@ export class Canvas extends fabric.Canvas {
 							// zoomX: obj.zoomX,
 							// zoomY: obj.zoomY,
 							scaleX: obj.scaleX,
-							scaleY: obj.scaleY
+							scaleY: obj.scaleY,
 						};
 					})
 				);
 			},
-			'object:rotating': (e: CanvasEvent): void => {
+			"object:rotating": (e: CanvasEvent): void => {
 				if (e.target === undefined) return;
 
 				const target = e.target;
 
-				const targets = target._objects ? target._objects.map(this.transformObj) : [ target ];
+				const targets = target._objects
+					? target._objects.map(this.transformObj)
+					: [target];
 
 				this._connection.update(
 					targets.map((obj: any) => {
@@ -206,16 +219,16 @@ export class Canvas extends fabric.Canvas {
 							translateX: obj.translateX,
 							translateY: obj.translateY,
 							top: obj.top,
-							left: obj.left
+							left: obj.left,
 						};
 					})
 				);
-			}
+			},
 		});
 	}
 
 	/**
- 	 * Getters
+	 * Getters
 	 */
 
 	get connection(): Connection {
@@ -226,6 +239,6 @@ export class Canvas extends fabric.Canvas {
 	}
 
 	/**
- 	 * Setters
+	 * Setters
 	 */
 }
