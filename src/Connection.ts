@@ -1,10 +1,15 @@
-import { Canvas } from './Canvas';
-import { fabric } from 'fabric';
+import { Canvas } from "./Canvas";
+import { fabric } from "fabric";
 
-import { DataChannel, TransferData, FabricSyncData, UpdateData } from './interfaces';
-import { onmessage } from './types';
-import { CanvasObject } from '.';
-import { UndoRedo } from './UndoRedo';
+import {
+	DataChannel,
+	TransferData,
+	FabricSyncData,
+	UpdateData,
+} from "./interfaces";
+import { onmessage } from "./types";
+import { CanvasObject } from ".";
+import { UndoRedo } from "./UndoRedo";
 
 export class Connection {
 	private _idsToSupress: string[] = [];
@@ -18,14 +23,11 @@ export class Connection {
 	) {
 		this._channel.onmessage = this.receive.bind(this);
 		this._undoRedo = new UndoRedo(this._fabric, this);
-
-
-
 	}
-	public init():void{
+	public init(): void {
 		if (!this._master) {
 			this.sendFabricData({
-				init: true
+				init: true,
 			});
 		}
 		this._undoRedo.init();
@@ -39,7 +41,7 @@ export class Connection {
 		const data = this.filterSupressedIds(ids);
 		if (data === []) return false;
 
-		this.sendFabricData({ obj: { data: data, type: 'remove' } });
+		this.sendFabricData({ obj: { data: data, type: "remove" } });
 
 		return true;
 	}
@@ -78,7 +80,7 @@ export class Connection {
 		const data = [];
 		for (const obj of this.filterSupressed(objs)) {
 			if (obj !== null) {
-				const temp = obj.toObject([ 'id', 'extra' ]);
+				const temp = obj.toObject(["id", "extra"]);
 				data.push(temp);
 			}
 		}
@@ -87,7 +89,7 @@ export class Connection {
 
 		if (data === []) return false;
 
-		this.sendFabricData({ obj: { data: data, type: 'create' } });
+		this.sendFabricData({ obj: { data: data, type: "create" } });
 
 		return true;
 	}
@@ -96,12 +98,12 @@ export class Connection {
 	 * updated
 	 */
 	public update(objs: UpdateData[]) {
-		const filteredIds = this.filterSupressedIds(objs.map((obj) => obj.id));
-		const data = objs.filter((obj) => filteredIds.indexOf(obj.id) !== -1);
+		const filteredIds = this.filterSupressedIds(objs.map(obj => obj.id));
+		const data = objs.filter(obj => filteredIds.indexOf(obj.id) !== -1);
 
 		if (data === []) return false;
 
-		this.sendFabricData({ obj: { data: data, type: 'update' } });
+		this.sendFabricData({ obj: { data: data, type: "update" } });
 
 		return true;
 	}
@@ -114,7 +116,7 @@ export class Connection {
 		console.log(data, this._fabric.lowerCanvasEl.id);
 		if (data.init === true) {
 			this.sendFabricData({
-				canvasJSON: this._fabric.toObject([ 'id', 'extra' ])
+				canvasJSON: this._fabric.toObject(["id", "extra"]),
 			});
 		}
 		if (data.canvasJSON) {
@@ -122,22 +124,16 @@ export class Connection {
 				this._idsToSupress.push(obj.id);
 			}
 			this._undoRedo.clearStack();
-			// @ts-ignore
-			console.warn(sync1.undoRedo.changeStack, sync2.undoRedo.changeStack);
+
 			// this._idsToSupress = [];
 			this._fabric.loadFromJSON(data.canvasJSON, () => {
 				this._fabric.refresh();
-				setTimeout(() => {
-					// @ts-ignore
-
-					console.warn(sync1.undoRedo.changeStack, sync2.undoRedo.changeStack);
-				}, 0);
 			});
 		}
 		if (data.obj) {
 			const dataObj = data.obj;
 
-			if (dataObj.type === 'remove') {
+			if (dataObj.type === "remove") {
 				const instances = [];
 				for (const id of dataObj.data) {
 					this._idsToSupress.push(id);
@@ -145,7 +141,7 @@ export class Connection {
 					if (instance !== null) instances.push(instance);
 				}
 				this._fabric.remove(...instances);
-			} else if (dataObj.type === 'create') {
+			} else if (dataObj.type === "create") {
 				fabric.util.enlivenObjects(
 					dataObj.data,
 					(objects: any) => {
@@ -156,9 +152,9 @@ export class Connection {
 							}
 						});
 					},
-					'fabric'
+					"fabric"
 				);
-			} else if (dataObj.type === 'update') {
+			} else if (dataObj.type === "update") {
 				const instances: CanvasObject[] = [];
 
 				dataObj.data.forEach((obj: any) => {
@@ -175,7 +171,7 @@ export class Connection {
 			this._fabric.refresh();
 		}
 		if (data.modified) {
-			this._fabric.trigger('object:modified', data.modified);
+			this._fabric.trigger("object:modified", data.modified);
 		}
 		if (data.undo !== undefined) {
 			if (data.undo === true) {
@@ -194,7 +190,7 @@ export class Connection {
 		}
 	}
 
-	/**	
+	/**
 	 * Getters
 	 */
 
@@ -219,7 +215,7 @@ export class Connection {
 	}
 
 	/**
- 	 * Setters
+	 * Setters
 	 */
 
 	set onmessage(fn: onmessage) {

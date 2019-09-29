@@ -89,7 +89,7 @@ export class Canvas extends fabric.Canvas {
 			"object:added": (e: CanvasEvent): void => {
 				if (e.target === undefined) return;
 
-				console.error(e);
+				console.info(e);
 
 				const target = e.target;
 
@@ -129,7 +129,7 @@ export class Canvas extends fabric.Canvas {
 				}
 				if (ret) return;
 
-				console.error("CANVAS", ret, objs);
+				console.info("CANVAS", ret, objs);
 
 				const ids: string[] = objs.map(obj => <string>obj.id);
 

@@ -143,11 +143,11 @@ export class UndoRedo {
 				//@ts-ignore
 				instance.set({ ignore: true });
 
-				console.warn(instance.ignore);
+				console.info(instance.ignore);
 				instances.push(instance);
 
 				this._idsToSupress.push(obj.id);
-				console.warn(this._idsToSupress);
+				console.info(this._idsToSupress);
 			}
 		}
 		this._fabric.refresh();
@@ -264,8 +264,6 @@ export class UndoRedo {
 				const filtered = this.filterSupressed(objs);
 				if (ret) return;
 
-				console.error("UNDOREDO", ret);
-
 				if (filtered.length !== 0) {
 					this._it = this._changeStack.length;
 					this._changeStack.push({
@@ -278,7 +276,7 @@ export class UndoRedo {
 			}, 0);
 		});
 		this._fabric.on("object:modified", (e: CanvasEvent) => {
-			console.warn(e);
+			console.info(e);
 
 			let filtered: CanvasObject[] = [];
 			let prev: fabric.Object | undefined;
