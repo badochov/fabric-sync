@@ -1,5 +1,4 @@
 import { fabric } from "fabric";
-import $ from "jquery";
 
 import { change, CanvasEvent, CanvasObject } from "./types";
 import { Connection } from "./Connection";
@@ -121,7 +120,6 @@ export class UndoRedo {
 					if (instance !== null) {
 						instance.set(obj.toObject(["id", "extra"]));
 						instance.calcCoords();
-						this._fabric.refresh();
 					}
 				});
 			},
@@ -322,18 +320,6 @@ export class UndoRedo {
 			}
 		});
 	}
-
-	// private bindKeys(): void {
-	// 	$(document).keydown((e: JQuery.Event) => {
-	// 		if (e.ctrlKey) {
-	// 			if (e.key === 'z') {
-	// 				this.undo();
-	// 			} else if (e.key === 'y') {
-	// 				this.redo();
-	// 			}
-	// 		}
-	// 	});
-	// }
 
 	/**
 	 * Getter
